@@ -1,5 +1,3 @@
-import os
-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -18,38 +16,13 @@ def prepare_daily_report():
     df_country.replace('US', 'United States', inplace=True)
     df_country.replace(0, 1, inplace=True)
     
-    code_df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder_with_codes.csv')
-    code_df_unique = code_df[["country", "iso_alpha"]].drop_duplicates()
-    code_df_unique = code_df_unique.append({'country': 'Russia', 'iso_alpha': 'RUS'}, ignore_index=True)
-    
+    code_df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/2014_world_gdp_with_codes.csv')
+    df_country_code = df_country.merge(code_df, left_on='Country_Region', right_on='COUNTRY', how='left')
 
-    df_country_code = df_country.merge(code_df_unique, left_on='Country_Region', right_on='country')
-    df_country_code.to_csv('df_processed.csv')
+    df_country_code.loc[df_country_code.Country_Region == 'Congo (Kinshasa)', 'CODE'] = 'COD'
+    df_country_code.loc[df_country_code.Country_Region == 'Congo (Brazzaville)', 'CODE'] = 'COG'
+    
     return(df_country_code)
-
-def prepare_confirmed_data():
-    us_df = pd.read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
-    us_df_agg = us_df.groupby(['Country_Region']).sum().reset_index()
-    us_df_agg.replace('US', 'United States', inplace=True)
-    us_df_agg.rename(columns={'Country_Region': 'Country/Region'}, inplace=True)
-
-    df = pd.read_csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv')
-    df_country = df.groupby(['Country/Region']).sum().reset_index()
-
-    df_all_country = pd.concat([us_df_agg, df_country], axis=0)
-
-    
-    code_df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder_with_codes.csv')
-    code_df_unique = code_df[["country", "iso_alpha"]].drop_duplicates()
-
-    df_country_code = df_all_country.merge(code_df_unique, left_on='Country/Region', right_on='country')
-
-    return (df_country_code)
-
-
-
-df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder_with_codes.csv')
-
 
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -59,7 +32,8 @@ app.title = 'Covid19-Dash'
 
 
 app.layout = html.Div([html.Div([html.H1("COVID19 Impact by Country")],
-                                style={'textAlign': "center", "padding-bottom": "30"}),
+                                style={'textAlign': "center", "padding-bottom": "30"}
+                               ),
                        html.Div([html.Span("Metric to display : ", className="six columns",
                                            style={"text-align": "right", "width": "40%", "padding-top": 10}),
                                  dcc.Dropdown(id="value-selected", value='Confirmed',
@@ -84,9 +58,10 @@ def update_figure(selected):
     dff = prepare_daily_report()
     dff['hover_text'] = dff["Country_Region"] + ": " + dff[selected].apply(str)
 
-    trace = go.Choropleth(locations=dff['iso_alpha'],z=np.log(dff[selected]),
+    trace = go.Choropleth(locations=dff['CODE'],z=np.log(dff[selected]),
                           text=dff['hover_text'],
                           hoverinfo="text",
+                          marker_line_color='white',
                           autocolorscale=False,
                           reversescale=True,
                           colorscale="RdBu",marker={'line': {'color': 'rgb(180,180,180)','width': 0.5}},
